@@ -5,6 +5,7 @@ import com.example.telegram.dto.message.SendMessageRequest;
 import com.example.telegram.entity.Chat;
 import com.example.telegram.entity.Message;
 import com.example.telegram.entity.User;
+import com.example.telegram.entity.mapper.MessageMapper;
 import com.example.telegram.repository.MessageRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,6 +22,7 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final ChatService chatService;
     private final UserService userService;
+    private final MessageMapper messageMapper;
 
     @Transactional
     public Message sendMessage(SendMessageRequest request, Long chatId, User sender) {
@@ -50,7 +52,7 @@ public class MessageService {
     public Page<MessageDto> getChatMessages(Long chatId, Pageable pageable) {
         Chat chat = chatService.getChatById(chatId);
         Page<Message> messages = messageRepository.findMessagesByChatId(chatId, pageable);
-        return messages.map(this::mapToDto);
+        return messages.map(messageMapper::toDto);
     }
 
     @Transactional

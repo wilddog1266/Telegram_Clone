@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public interface ChatParticipantRepository extends JpaRepository<ChatParticipant, Long> {
@@ -18,6 +19,7 @@ public interface ChatParticipantRepository extends JpaRepository<ChatParticipant
     Optional<ChatParticipant> findByChatAndUser(Chat chat, User user);
     List<ChatParticipant> findByChat(Chat chat);
     List<ChatParticipant> findByUser(User user);
+    Set<Long> findUserIdsByChat(Chat chat);
     Boolean existsByChatAndUser(Chat chat, User user);
     Integer countByChat(Chat chat);
 

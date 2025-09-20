@@ -5,17 +5,21 @@ import com.example.telegram.dto.chat.CreateChatRequest;
 import com.example.telegram.entity.Chat;
 import com.example.telegram.entity.ChatParticipant;
 import com.example.telegram.entity.User;
+import com.example.telegram.entity.enums.ChatType;
 import com.example.telegram.entity.enums.ParticipantRole;
 import com.example.telegram.entity.enums.UserStatus;
 import com.example.telegram.repository.ChatParticipantRepository;
 import com.example.telegram.repository.ChatRepository;
 import com.example.telegram.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -55,6 +59,76 @@ public class ChatService {
         }
 
         return savedChat;
+    }
+
+    @Transactional
+    public void addParticipants(Chat chat, List<Long> participantIds) {
+        if (chat.getType() == ChatType.PRIVATE) {
+            throw new IllegalArgumentException("Нельзя добавлять участников в приватный чат");
+        }
+
+        Set<Long> existingUserIds = chatParticipantRepository.findUserIdsByChat(chat);
+
+        List<ChatParticipant> newParticipants = participantIds.stream()
+                .filter(userId -> !existingUserIds.contains(userId))
+                .map(userId -> {
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
+
+                    ChatParticipant participant = new ChatParticipant();
+                    participant.setUser(user);
+                    participant.setChat(chat);
+                    participant.setRole(ParticipantRole.MEMBER);
+                    return participant;
+                })
+                .collect(Collectors.toList());
+
+        chatParticipantRepository.saveAll(newParticipants);
+    }
+
+    @Transactional
+    public Chat createChat(String name, ChatType type, List<Long> participantIds, User creator) {
+        Chat chat = new Chat();
+        chat.setName(name);
+        chat.setType(type);
+
+        // Добавляем создателя
+        ChatParticipant creatorParticipant = new ChatParticipant();
+        creatorParticipant.setUser(creator);
+        creatorParticipant.setChat(chat);
+        chat.getParticipants().add(creatorParticipant);
+
+        if (type == ChatType.GROUP && participantIds != null) {
+            List<User> users = userRepository.findAllById(participantIds);
+            for (User u : users) {
+                ChatParticipant p = new ChatParticipant();
+                p.setUser(u);
+                p.setChat(chat);
+                chat.getParticipants().add(p);
+            }
+        }
+
+        if (type == ChatType.PRIVATE) {
+            if (participantIds == null || participantIds.size() != 1) {
+                throw new IllegalArgumentException("Приватный чат должен иметь ровно одного участника");
+            }
+
+            User other = userRepository.findById(participantIds.get(0))
+                    .orElseThrow(() -> new EntityNotFoundException("Пользователь не найден"));
+
+            ChatParticipant otherParticipant = new ChatParticipant();
+            otherParticipant.setUser(other);
+            otherParticipant.setChat(chat);
+            chat.getParticipants().add(otherParticipant);
+        }
+
+        return chatRepository.save(chat);
+    }
+
+
+    public Chat findById(Long chatId) {
+        return chatRepository.findById(chatId)
+                .orElseThrow(() -> new RuntimeException("Не удалось найти чат с ID: " + chatId));
     }
 
     private void addParticipant(Chat chat, User user, ParticipantRole role) {

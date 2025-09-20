@@ -6,10 +6,14 @@ import com.example.telegram.dto.user.UserDto;
 import com.example.telegram.entity.User;
 import com.example.telegram.entity.mapper.ChatMapper;
 import com.example.telegram.repository.UserRepository;
+import com.example.telegram.service.ChatMappingService;
 import com.example.telegram.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,7 +24,7 @@ import java.util.List;
 public class UserController {
     private final UserService userService;
     private final UserRepository userRepository;
-    private final ChatMapper chatMapper;
+    private final ChatMappingService chatMapper;
 
     @GetMapping("/me")
     public ResponseEntity<UserDto> getCurrentUser(Authentication authentication) {
@@ -40,7 +44,7 @@ public class UserController {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
         return user.getChats().stream()
-                .map(chatMapper::toDto)
+                .map(chatMapper::mapToFullDto)
                 .toList();
     }
 

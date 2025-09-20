@@ -38,13 +38,12 @@ public class MessageController {
 
     @PostMapping
     public ResponseEntity<MessageDto> sendMessage(
-            Authentication authentication,
             @PathVariable Long chatId,
+            Authentication authentication,
             @RequestBody SendMessageRequest request
     ) {
         String username = authentication.getName();
         User currentUser = userService.getByUsername(username);
-
         return ResponseEntity.ok(
                 messageService.mapToDto(
                         messageService.sendMessage(request, chatId, currentUser)
@@ -52,32 +51,8 @@ public class MessageController {
         );
     }
 
-    @PostMapping("/api/v1/chats/{chatId}/messages")
-    public MessageDto sendMessage(
-            @PathVariable Long chatId,
-            @RequestBody MessageDto dto,
-            Principal principal
-    ) {
-        User user = userRepository.findByUsername(principal.getName())
-                .orElseThrow();
-        Chat chat = chatRepository.findById(chatId).orElseThrow();
-
-        if (!chat.getUsers().contains(user)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not in this chat");
-        }
-
-        Message msg = new Message();
-        msg.setContent(dto.getContent());
-        msg.setChat(chat);
-        msg.setSender(user);
-        msg.setTimestamp(Instant.now());
-
-        return messageMapper.toDto(messageRepository.save(msg));
-    }
-
     @GetMapping
     public ResponseEntity<Page<MessageDto>> getChatMessages(
-            @AuthenticationPrincipal User currentUser,
             @PathVariable Long chatId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size
@@ -88,9 +63,9 @@ public class MessageController {
 
     @PutMapping("/{messageId}")
     public ResponseEntity<MessageDto> editMessage(
-            @AuthenticationPrincipal User currentUser,
             @PathVariable Long chatId,
             @PathVariable Long messageId,
+            @AuthenticationPrincipal User currentUser,
             @RequestParam String content
     ) {
         return ResponseEntity.ok(
@@ -102,9 +77,9 @@ public class MessageController {
 
     @DeleteMapping("/{messageId}")
     public ResponseEntity<Void> deleteMessage(
-            @AuthenticationPrincipal User currentUser,
             @PathVariable Long chatId,
-            @PathVariable Long messageId
+            @PathVariable Long messageId,
+            @AuthenticationPrincipal User currentUser
     ) {
         messageService.deleteMessage(messageId, currentUser);
         return ResponseEntity.ok().build();

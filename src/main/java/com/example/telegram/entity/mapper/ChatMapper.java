@@ -2,15 +2,10 @@ package com.example.telegram.entity.mapper;
 
 import com.example.telegram.dto.chat.ChatDto;
 import com.example.telegram.entity.Chat;
-import com.example.telegram.repository.ChatParticipantRepository;
-import com.example.telegram.service.UserService;
-import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
-@RequiredArgsConstructor
+@Component
 public class ChatMapper {
-
-    private final UserService userService;
-    private final ChatParticipantRepository chatParticipantRepository;
 
     public ChatDto toDto(Chat chat) {
         ChatDto dto = new ChatDto();
@@ -19,8 +14,7 @@ public class ChatMapper {
         dto.setDescription(chat.getDescription());
         dto.setAvatarUrl(chat.getAvatarUrl());
         dto.setType(chat.getType());
-        dto.setCreatedBy(userService.mapToDto(chat.getCreatedBy()));
-        dto.setParticipantsCount(chatParticipantRepository.countByChat(chat));
+        dto.setParticipantsCount(chat.getParticipants().size());
         return dto;
     }
 }

@@ -7,12 +7,12 @@ import com.example.telegram.dto.user.UserDto;
 import com.example.telegram.entity.User;
 import com.example.telegram.entity.enums.UserStatus;
 import com.example.telegram.repository.UserRepository;
-import com.example.telegram.security.CustomUserDetailsService;
 import com.example.telegram.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +24,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-    private final CustomUserDetailsService userDetailsService;
+    private final UserDetailsService userDetailsService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -42,7 +42,6 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
 
-        // Получаем UserDetails для генерации токена
         UserDetails userDetails = userDetailsService.loadUserByUsername(savedUser.getUsername());
         String token = jwtService.generateToken(userDetails);
 

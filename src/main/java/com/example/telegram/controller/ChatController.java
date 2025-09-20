@@ -5,6 +5,7 @@ import com.example.telegram.dto.chat.CreateChatRequest;
 import com.example.telegram.dto.message.MessageDto;
 import com.example.telegram.entity.Chat;
 import com.example.telegram.entity.User;
+import com.example.telegram.entity.enums.ChatType;
 import com.example.telegram.entity.mapper.MessageMapper;
 import com.example.telegram.repository.ChatRepository;
 import com.example.telegram.repository.MessageRepository;
@@ -12,6 +13,9 @@ import com.example.telegram.repository.UserRepository;
 import com.example.telegram.service.ChatService;
 import com.example.telegram.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.apache.coyote.BadRequestException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -30,13 +34,21 @@ public class ChatController {
     private final MessageRepository messageRepository;
     private final ChatRepository chatRepository;
     private final UserRepository userRepository;
-    private final MessageMapper messageMapper;
+    private MessageMapper messageMapper;
+
+    @Autowired
+    public void setMessageMapper(@Lazy MessageMapper messageMapper) {
+        this.messageMapper = messageMapper;
+    }
 
     @PostMapping
     public ResponseEntity<ChatDto> createChat(
             Authentication authentication,
             @RequestBody CreateChatRequest request
-    ) {
+    ) throws BadRequestException {
+        if(request.getType() == ChatType.PRIVATE && request.getParticipantIds().length != 1) {
+            throw new BadRequestException("Приватный чат может иметь только одного участника");
+        }
         String username = authentication.getName();
         User currentUser = userService.getByUsername(username);
         return ResponseEntity.ok(chatService.mapToDto(chatService.createChat(request, currentUser)));
@@ -64,8 +76,15 @@ public class ChatController {
                 .toList();
     }
 
-    @PutMapping("/{chatId}")
-    public
+    @PostMapping("/{chatId}/add-participants")
+    public ResponseEntity<?> addParticipants(@PathVariable Long chatId, @RequestBody List<Long> userIds) throws BadRequestException {
+        Chat chat = chatService.findById(chatId);
+        if(chat.getType() == ChatType.PRIVATE) {
+            throw new BadRequestException("Нельзя добавлять участников в приватный чат");
+        }
+        chatService.addParticipants(chat, userIds);
+        return ResponseEntity.ok().build();
+    }
 
     @GetMapping("/{chatId}")
     public ResponseEntity<ChatDto> getChat(

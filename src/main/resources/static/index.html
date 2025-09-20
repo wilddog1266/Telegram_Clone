@@ -3,307 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Clone - Test</title>
+    <title>Telegram Clone - Advanced</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Arial, sans-serif; background: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .auth-section, .chat-section { background: white; padding: 20px; margin: 10px 0; border-radius: 10px; }
-        input, button, textarea { padding: 10px; margin: 5px; border: 1px solid #ddd; border-radius: 5px; }
-        button { background: #0088cc; color: white; cursor: pointer; }
+        body { font-family: Arial, sans-serif; background: #f0f2f5; display: flex; height: 100vh; }
+        #sidebar { width: 320px; background: #fff; border-right: 1px solid #ccc; display: flex; flex-direction: column; padding: 10px; }
+        #main { flex: 1; display: flex; flex-direction: column; padding: 10px; }
+        .section { margin-bottom: 10px; }
+        input, button, textarea, select { padding: 8px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; width: 100%; }
+        button { background: #0088cc; color: white; border: none; cursor: pointer; }
         button:hover { background: #006699; }
-        .message { padding: 10px; margin: 5px; background: #e3f2fd; border-radius: 5px; }
-        .chat-list { max-height: 300px; overflow-y: auto; }
+        .chat-item { padding: 10px; border-radius: 5px; cursor: pointer; margin-bottom: 5px; background: #e3f2fd; }
+        .chat-item.active { background: #b3e5fc; }
+        #messages-list { flex: 1; overflow-y: auto; padding: 5px; border: 1px solid #ccc; border-radius: 5px; background: #fff; }
+        .message { margin-bottom: 8px; padding: 5px 10px; border-radius: 5px; background: #f1f1f1; }
+        .message.self { background: #d1ffd1; align-self: flex-end; }
+        #send-area { display: flex; margin-top: 5px; }
+        #send-area textarea { flex: 1; }
+        #send-area button { margin-left: 5px; width: 100px; }
+        .participants-input { display: flex; gap: 5px; }
+        .participants-input input { flex: 1; }
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>Telegram Clone Test</h1>
-
-    <!-- Section 1: Authentication -->
-    <div class="auth-section">
-        <h2>Authentication</h2>
-        <div>
-            <input type="text" id="username" placeholder="Username" value="user1">
-            <input type="password" id="password" placeholder="Password" value="password123">
-            <button onclick="login()">Login</button>
-            <button onclick="register()">Register</button>
-        </div>
+<div id="sidebar">
+    <div class="section">
+        <h3>Auth / Register</h3>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <input type="text" id="phone" placeholder="Phone Number (+123456789)">
+        <button onclick="register()">Register</button>
+        <button onclick="login()">Login</button>
         <div id="auth-status"></div>
     </div>
-
-    <!-- Section 2: User Profile -->
-    <div class="auth-section">
-        <h2>User Profile</h2>
-        <div>
-            <button onclick="getProfile()">Get My Profile</button>
-            <button onclick="updateProfile()">Update Profile</button>
+    <div class="section">
+        <h3>Chats</h3>
+        <div id="chats-list"></div>
+        <input type="text" id="chat-name" placeholder="New Chat Name">
+        <select id="chat-type" onchange="toggleParticipantsField()">
+            <option value="GROUP">GROUP</option>
+            <option value="PRIVATE">PRIVATE</option>
+        </select>
+        <div class="participants-input">
+            <input type="text" id="chat-participants" placeholder="Participants (comma-separated)">
         </div>
-        <div id="profile-info"></div>
+        <button onclick="createChat()">Create Chat</button>
+        <button onclick="refreshChats()">Refresh Chats</button>
     </div>
-
-    <!-- Section 3: Chats -->
-    <div class="chat-section">
-        <h2>Chats</h2>
-        <div>
-            <input type="text" id="chat-name" placeholder="Chat name">
-            <select id="chat-type">
-                <option value="GROUP">GROUP</option>
-                <option value="PRIVATE">PRIVATE</option>
-            </select>
-            <button onclick="createChat()">Create Chat</button>
-            <button onclick="getChats()">Get My Chats</button>
-        </div>
-        <div id="chats-list" class="chat-list"></div>
+</div>
+<div id="main">
+    <div class="section">
+        <h3>Messages</h3>
+        <div id="messages-list"></div>
     </div>
-
-    <!-- Section 4: Messages -->
-    <div class="chat-section">
-        <h2>Messages</h2>
-        <div>
-            <input type="number" id="chat-id" placeholder="Chat ID">
-            <textarea id="message-text" placeholder="Your message"></textarea>
-            <button onclick="sendMessage()">Send Message</button>
-            <button onclick="getMessages()">Get Messages</button>
-        </div>
-        <div id="messages-list" class="chat-list"></div>
+    <div id="send-area">
+        <textarea id="message-text" placeholder="Type message"></textarea>
+        <button onclick="sendMessage()">Send</button>
     </div>
 </div>
 
 <script>
     let token = '';
+    let activeChatId = null;
     const API_URL = 'http://localhost:8080/api/v1';
 
-    // Authentication functions
-    async function login() {
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-
-        try {
-            const response = await fetch(`${API_URL}/auth/signin`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-
-            const data = await response.json();
-            if (response.ok) {
-                token = data.token;
-                document.getElementById('auth-status').innerHTML =
-                    `<p style="color: green;">Залогинен как ${data.user.username}</p>`;
-            } else {
-                document.getElementById('auth-status').innerHTML =
-                    `<p style="color: red;">Ошибка залогинивания: ${data.message}</p>`;
-            }
-        } catch (error) {
-            document.getElementById('auth-status').innerHTML =
-                `<p style="color: red;">Ошибка: ${error}</p>`;
-        }
+    // Общая функция fetch
+    async function apiRequest(url, method='GET', body=null) {
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const options = { method, headers };
+        if (body) options.body = JSON.stringify(body);
+        const response = await fetch(`${API_URL}${url}`, options);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Ошибка запроса');
+        return data;
     }
 
+    // Регистрация
     async function register() {
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
+        const phone = document.getElementById('phone').value;
+        if (!phone) return alert('Номер телефона обязателен');
 
         try {
-            const response = await fetch(`${API_URL}/auth/signup`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username,
-                    password,
-                    firstName: 'Test',
-                    lastName: 'User',
-                    phoneNumber: '+1234567890'
-                })
+            const data = await apiRequest('/auth/signup', 'POST', {
+                username, password, phoneNumber: phone, firstName: 'Test', lastName: 'User'
             });
-
-            const data = await response.json();
-            if (response.ok) {
-                token = data.token;
-                document.getElementById('auth-status').innerHTML =
-                    `<p style="color: green;">Зарегистрирован и залогинен как ${data.user.username}</p>`;
-            } else {
-                document.getElementById('auth-status').innerHTML =
-                    `<p style="color: red;">Ошибка регистрации: ${data.message}</p>`;
-            }
+            token = data.token;
+            document.getElementById('auth-status').innerHTML = `<p style="color: green;">Зарегистрирован и залогинен как ${data.user.username}</p>`;
+            refreshChats();
         } catch (error) {
-            document.getElementById('auth-status').innerHTML =
-                `<p style="color: red;">Ошибка: ${error}</p>`;
+            document.getElementById('auth-status').innerHTML = `<p style="color: red;">Ошибка: ${error.message}</p>`;
         }
     }
 
-    // User profile functions
-    async function getProfile() {
-        if (!token) return alert('Сначала залогиньтесь');
-
+    // Логин
+    async function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
         try {
-            const response = await fetch(`${API_URL}/users/me`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            const data = await response.json();
-            document.getElementById('profile-info').innerHTML = `
-                <p><strong>Username:</strong> ${data.username}</p>
-                <p><strong>Name:</strong> ${data.firstName} ${data.lastName}</p>
-                <p><strong>Bio:</strong> ${data.bio || 'No bio'}</p>
-                <p><strong>Status:</strong> ${data.status}</p>
-            `;
+            const data = await apiRequest('/auth/signin', 'POST', { username, password });
+            token = data.token;
+            document.getElementById('auth-status').innerHTML = `<p style="color: green;">Залогинен как ${data.user.username}</p>`;
+            refreshChats();
         } catch (error) {
-            document.getElementById('profile-info').innerHTML =
-                `<p style="color: red;">Ошибка: ${error}</p>`;
+            document.getElementById('auth-status').innerHTML = `<p style="color: red;">Ошибка: ${error.message}</p>`;
         }
     }
 
-    async function updateProfile() {
-        if (!token) return alert('Сначала залогиньтесь');
-
-        try {
-            const response = await fetch(`${API_URL}/users/me`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    firstName: 'Updated',
-                    lastName: 'User',
-                    bio: 'This is my updated bio',
-                    avatarUrl: 'https://example.com/avatar.jpg'
-                })
-            });
-
-            const data = await response.json();
-            document.getElementById('profile-info').innerHTML =
-                `<p style="color: green;">Profile updated successfully!</p>`;
-        } catch (error) {
-            document.getElementById('profile-info').innerHTML =
-                `<p style="color: red;">Ошибка: ${error}</p>`;
-        }
-    }
-
-    // Chat functions
+    // Создание чата
     async function createChat() {
-        if (!token) return alert('Сначала залогиньтесь');
-
-        const name = document.getElementById('chat-name').value;
+        const name = document.getElementById('chat-name').value || 'New Chat';
         const type = document.getElementById('chat-type').value;
+        let participantsInput = document.getElementById('chat-participants').value.trim();
+        let participantIds = [];
+
+        if (type === 'PRIVATE') {
+            if (!participantsInput) return alert('Укажите одного пользователя для приватного чата');
+            const usernames = participantsInput.split(',').map(u => u.trim());
+            if (usernames.length > 1) return alert('Приватный чат может иметь только одного собеседника');
+            participantIds = usernames; // Предполагаем, что бэкенд принимает usernames для PRIVATE
+        } else {
+            // GROUP чат
+            if (participantsInput) participantIds = participantsInput.split(',').map(u => u.trim());
+        }
 
         try {
-            const response = await fetch(`${API_URL}/chats`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    name: name || 'New Chat',
-                    type,
-                    participantIds: []
-                })
-            });
-
-            const data = await response.json();
-            document.getElementById('chats-list').innerHTML =
-                `<p style="color: green;">Чат создан с ID: ${data.id}</p>`;
+            await apiRequest('/chats', 'POST', { name, type, participantIds });
+            document.getElementById('chat-name').value = '';
+            document.getElementById('chat-participants').value = '';
+            refreshChats();
         } catch (error) {
-            document.getElementById('chats-list').innerHTML =
-                `<p style="color: red;">Ошибка: ${error}</p>`;
+            alert(`Ошибка: ${error.message}`);
         }
     }
 
-    async function getChats() {
-        if (!token) return alert('Сначала залогиньтесь');
-
+    // Получение чатов
+    async function refreshChats() {
+        if (!token) return;
         try {
-            const response = await fetch(`${API_URL}/chats`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            const chats = await response.json();
-            let html = '<h3>Your Chats:</h3>';
+            const chats = await apiRequest('/chats');
+            const list = document.getElementById('chats-list');
+            list.innerHTML = '';
             chats.forEach(chat => {
-                html += `
-                    <div class="message">
-                        <p><strong>${chat.name}</strong> (${chat.type})</p>
-                        <p>ID: ${chat.id}, Participants: ${chat.participantsCount}</p>
-                    </div>
-                `;
+                const div = document.createElement('div');
+                div.className = 'chat-item' + (chat.id == activeChatId ? ' active' : '');
+                div.innerText = `${chat.name} (${chat.type})`;
+                div.onclick = () => selectChat(chat.id);
+                list.appendChild(div);
             });
-            document.getElementById('chats-list').innerHTML = html;
         } catch (error) {
-            document.getElementById('chats-list').innerHTML =
-                `<p style="color: red;">Ошибка: ${error}</p>`;
+            console.error(error);
         }
     }
 
-    // Message functions
-    async function sendMessage() {
-        if (!token) return alert('Сначала залогиньтесь');
-
-        const chatId = document.getElementById('chat-id').value;
-        const text = document.getElementById('message-text').value;
-
-        if (!chatId || !text) return alert('Пожалуйста введите ID чата и сообщение');
-
-        try {
-            const response = await fetch(`${API_URL}/chats/${chatId}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    content: text,
-                    type: 'TEXT'
-                })
-            });
-
-            const data = await response.json();
-            document.getElementById('message-text').value = '';
-            document.getElementById('messages-list').innerHTML =
-                `<p style="color: green;">Message sent!</p>`;
-        } catch (error) {
-            document.getElementById('messages-list').innerHTML =
-                `<p style="color: red;">Ошибка: ${error}</p>`;
-        }
+    // Выбор чата
+    function selectChat(chatId) {
+        activeChatId = chatId;
+        refreshChats();
+        getMessages();
     }
 
+    // Получение сообщений
     async function getMessages() {
-        if (!token) return alert('Сначала залогиньтесь');
-
-        const chatId = document.getElementById('chat-id').value;
-        if (!chatId) return alert('Пожалуйста введите ID чата');
-
+        if (!token || !activeChatId) return;
         try {
-            const response = await fetch(`${API_URL}/chats/${chatId}/messages`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            const messages = await response.json();
-            let html = '<h3>Messages:</h3>';
+            const messages = await apiRequest(`/chats/${activeChatId}/messages`);
+            const list = document.getElementById('messages-list');
+            list.innerHTML = '';
             messages.content.forEach(msg => {
-                html += `
-                    <div class="message">
-                        <p><strong>${msg.sender.username}:</strong> ${msg.content}</p>
-                        <small>${new Date(msg.timestamp).toLocaleString()}</small>
-                    </div>
-                `;
+                const div = document.createElement('div');
+                div.className = 'message' + (msg.sender.username === document.getElementById('username').value ? ' self' : '');
+                div.innerHTML = `<strong>${msg.sender.username}:</strong> ${msg.content}<br><small>${new Date(msg.timestamp).toLocaleString()}</small>`;
+                list.appendChild(div);
             });
-            document.getElementById('messages-list').innerHTML = html;
+            list.scrollTop = list.scrollHeight;
         } catch (error) {
-            document.getElementById('messages-list').innerHTML =
-                `<p style="color: red;">Ошибка: ${error}</p>`;
+            console.error(error);
         }
+    }
+
+    // Отправка сообщения
+    async function sendMessage() {
+        if (!token || !activeChatId) return alert('Сначала выберите чат');
+        const text = document.getElementById('message-text').value;
+        if (!text) return;
+        try {
+            await apiRequest(`/chats/${activeChatId}/messages`, 'POST', { content: text, type: 'TEXT' });
+            document.getElementById('message-text').value = '';
+            getMessages();
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    // Авто-обновление сообщений каждые 3 секунды
+    setInterval(() => { if(activeChatId) getMessages(); }, 3000);
+
+    // Включение/отключение поля участников при выборе типа
+    function toggleParticipantsField() {
+        const type = document.getElementById('chat-type').value;
+        const participants = document.getElementById('chat-participants');
+        if(type === 'PRIVATE') participants.placeholder = 'Single username';
+        else participants.placeholder = 'Comma-separated usernames';
     }
 </script>
 </body>
