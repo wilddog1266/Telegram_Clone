@@ -61,7 +61,7 @@ public class ChatController {
         return ResponseEntity.ok(chatService.getUserChats(currentUser.getId()));
     }
 
-    @GetMapping("/{chatId}/messages")
+    @GetMapping("/{chatId}/messages/paged")
     public List<MessageDto> getMessages(@PathVariable Long chatId, Principal principal) {
         User user = userRepository.findByUsername(principal.getName())
                 .orElseThrow();

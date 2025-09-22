@@ -51,15 +51,15 @@ public class MessageController {
         );
     }
 
-    @GetMapping
-    public ResponseEntity<Page<MessageDto>> getChatMessages(
-            @PathVariable Long chatId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size
-    ) {
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(messageService.getChatMessages(chatId, pageable));
-    }
+//    @GetMapping
+//    public ResponseEntity<Page<MessageDto>> getChatMessages(
+//            @PathVariable Long chatId,
+//            @RequestParam(defaultValue = "0") int page,
+//            @RequestParam(defaultValue = "50") int size
+//    ) {
+//        Pageable pageable = PageRequest.of(page, size);
+//        return ResponseEntity.ok(messageService.getChatMessages(chatId, pageable));
+//    }
 
     @PutMapping("/{messageId}")
     public ResponseEntity<MessageDto> editMessage(

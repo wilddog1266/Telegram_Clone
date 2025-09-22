@@ -39,6 +39,6 @@ logging:
   level:
     com.example.telegram: DEBUG
     org.springframework.security: DEBUG
-    org.springframework: DEBUG
+    org.springframework: INFO
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
